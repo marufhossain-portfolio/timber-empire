@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>TIMBER EMPIRE</title>
+<meta name="theme-color" content="#1c2a1f" />
+<meta name="description" content="Grow a tiny logging operation into a global timber empire." />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%B2%3C/text%3E%3C/svg%3E" />
+<style>
+:root{
+  --bg:#1c2a1f; --panel:#243326; --panel2:#2e4030; --line:#3a4d3c;
+  --text:#f3f0e4; --muted:#b9c4a8; --faint:#82906f;
+  --gold:#f4c542; --good:#7bd88f; --bad:#ef7a6b; --blue:#6fb1e0; --orange:#f29a4b;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg); color:var(--text); height:100vh; height:100dvh;
+  user-select:none;-webkit-user-select:none; touch-action:manipulation;
+  position:fixed; inset:0;
+}
+#wrap{display:flex; flex-direction:column; height:100%}
+#scene{position:relative; flex:1 1 55%; min-height:0}
+#cv{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none}
+
+/* HUD overlay */
+.hud{position:absolute; top:calc(var(--sat) + 8px); left:8px; right:8px; display:flex; gap:6px; pointer-events:none; z-index:5}
+.hud .card{background:rgba(20,28,22,.72); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:7px 10px; backdrop-filter:blur(6px)}
+.hud .card .l{font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted)}
+.hud .card .v{font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1}
+.hud .card .v.money{color:var(--gold)}
+.hud .card .v.logs{color:#c8a46b}
+.hud .spacer{flex:1}
+.hud .bar{height:5px; background:rgba(255,255,255,.12); border-radius:3px; overflow:hidden; margin-top:3px}
+.hud .bar>i{display:block; height:100%; border-radius:3px; background:var(--good); transition:width .1s}
+.hud .bar>i.sta{background:var(--orange)}
+.hud .bar>i.fh{background:var(--good)}
+
+/* swing meter */
+#meter{position:absolute; left:12px; right:12px; bottom:calc(var(--sab) + 16px); z-index:6; pointer-events:none; opacity:0; transition:opacity .2s}
+#meter .lab{font-size:10px; text-align:center; color:var(--muted); font-weight:700; letter-spacing:.06em; margin-bottom:4px}
+#meter .track{position:relative; height:22px; background:rgba(0,0,0,.45); border-radius:12px; border:1px solid rgba(255,255,255,.15); overflow:hidden}
+#meter .zone{position:absolute; top:0; bottom:0; left:42%; width:16%; background:rgba(123,216,143,.5); border-left:1px solid #7bd88f; border-right:1px solid #7bd88f}
+#meter .needle{position:absolute; top:0; bottom:0; width:4px; background:#fff; border-radius:2px; box-shadow:0 0 8px #fff}
+
+/* bottom sheet */
+#sheet{flex:0 0 auto; max-height:48%; display:flex; flex-direction:column; background:var(--panel); border-top:1px solid var(--line); z-index:10}
+#tabs{display:flex; border-bottom:1px solid var(--line); overflow-x:auto}
+#tabs button{flex:1 0 auto; min-width:64px; min-height:48px; padding:0 10px; background:none; border:none; color:var(--muted); font-weight:700; font-size:12px; white-space:nowrap}
+#tabs button.on{color:var(--gold); border-bottom:2px solid var(--gold)}
+#panel{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 12px calc(var(--sab) + 12px)}
+
+/* shop items */
+.item{display:flex; align-items:center; gap:10px; padding:9px; border-radius:12px; background:var(--panel2); border:1px solid var(--line); margin-bottom:8px}
+.item .ic{font-size:24px; width:42px; height:42px; flex:none; display:grid; place-items:center; background:rgba(255,255,255,.05); border-radius:11px}
+.item .info{flex:1; min-width:0}
+.item .info .n{font-size:13.5px; font-weight:800}
+.item .info .d{font-size:10.5px; color:var(--muted)}
+.item .info .y{font-size:10.5px; color:var(--good)}
+.item .buy{flex:none; min-width:82px; min-height:48px; padding:8px 10px; border-radius:11px; background:linear-gradient(160deg,#f4c542,#e0a020); color:#2a1e05; font-weight:900; font-size:12px; display:flex; flex-direction:column; align-items:center; justify-content:center}
+.item .buy .c{font-size:10.5px; font-weight:800}
+.item .buy.off{background:#334; color:var(--faint)}
+.item .buy.owned{background:#245236; color:var(--good)}
+.cathead{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--gold); margin:12px 2px 6px; font-weight:800}
+
+/* prestige / stats / settings */
+.pt{display:flex; align-items:center; gap:8px; padding:8px; border-radius:10px; background:var(--panel2); margin-bottom:7px; border:1px solid var(--line)}
+.pt .ic{font-size:20px}
+.pt .info{flex:1; min-width:0}
+.pt .info .n{font-size:13px; font-weight:700}
+.pt .info .d{font-size:10px; color:var(--muted)}
+.pt button{min-height:40px; padding:0 12px; border-radius:10px; background:linear-gradient(160deg,#6fb1e0,#3d7fc0); color:#0b1622; font-weight:900; font-size:12px}
+.pt button.off{background:#334; color:var(--faint)}
+.pt button.on{background:#245236; color:var(--good)}
+.btn{width:100%; min-height:48px; border-radius:12px; background:var(--panel2); border:1px solid var(--line); color:var(--text); font-weight:800; font-size:13px; margin-bottom:8px}
+.btn.gold{background:linear-gradient(160deg,#f4c542,#e0a020); color:#2a1e05}
+.btn.danger{border-color:var(--bad); color:var(--bad)}
+.btn:active{transform:scale(.98)}
+.row{display:flex; justify-content:space-between; align-items:center; padding:6px 2px; font-size:12.5px; border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .k{color:var(--muted)}
+.row .v{font-weight:700; font-variant-numeric:tabular-nums}
+
+/* achievements */
+.ach{display:flex; gap:10px; align-items:center; padding:7px 9px; border-radius:10px; background:var(--panel2); margin-bottom:6px; border:1px solid var(--line)}
+.ach .ic{font-size:18px; opacity:.35; filter:grayscale(1)}
+.ach.done .ic{opacity:1; filter:none}
+.ach .info{flex:1}
+.ach .info .n{font-size:12.5px; font-weight:700}
+.ach .info .d{font-size:10px; color:var(--muted)}
+.ach.done{border-color:#3f6f4f}
+
+/* toasts */
+#toasts{position:fixed; top:calc(var(--sat) + 8px); left:50%; transform:translateX(-50%); z-index:60; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; width:90%; max-width:420px}
+.toast{background:var(--panel2); border:1px solid var(--gold); border-radius:12px; padding:10px 15px; font-size:13px; font-weight:700; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:tin .3s ease-out}
+@keyframes tin{from{opacity:0; transform:translateY(-12px)}to{opacity:1; transform:none}}
+
+/* modals */
+.modal-back{position:fixed; inset:0; background:rgba(0,0,0,.62); z-index:70; display:grid; place-items:center; padding:20px}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:20px; max-width:380px; width:100%; max-height:80vh; overflow-y:auto}
+.modal h2{font-size:19px; margin-bottom:8px; text-align:center}
+.modal p{font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.5; text-align:center}
+.modal .btns{display:flex; gap:10px; margin-top:14px}
+.modal .btns button{flex:1; min-height:48px; border-radius:12px; font-weight:900; font-size:14px; border:none}
+.modal .btns .ok{background:linear-gradient(160deg,#f4c542,#e0a020); color:#2a1e05}
+.modal .btns .no{background:var(--panel2); color:var(--muted)}
+.modal .big{font-size:22px; font-weight:900; color:var(--gold); text-align:center; margin:8px 0}
+.hidden{display:none!important}
+
+/* era banner */
+#eraBanner{position:fixed; inset:0; z-index:80; display:grid; place-items:center; pointer-events:none; opacity:0; transition:opacity .4s}
+#eraBanner .box{text-align:center; padding:30px 40px; border-radius:24px; background:rgba(20,28,22,.9); border:1px solid var(--gold)}
+#eraBanner .box .t{font-size:34px; font-weight:900; color:var(--gold); margin:6px 0}
+#eraBanner .box .s{font-size:14px; color:var(--muted)}
+
+@media(min-width:820px){
+  #wrap{flex-direction:row}
+  #scene{flex:1 1 60%; height:100%}
+  #sheet{flex:0 0 40%; max-height:100%; height:100%}
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="scene">
+    <canvas id="cv"></canvas>
+    <div class="hud" id="hud">
+      <div class="card"><div class="l">Money</div><div class="v money" id="hMoney">$0</div></div>
+      <div class="card"><div class="l">Logs</div><div class="v logs" id="hLogs">0/0</div></div>
+      <div class="spacer"></div>
+      <div class="card" id="hStamCard">
+        <div class="l">Stamina</div><div class="v" id="hStam">100</div>
+        <div class="bar"><i class="sta" id="hStamBar" style="width:100%"></i></div>
+      </div>
+      <div class="card" id="hFhCard">
+        <div class="l">Forest</div><div class="v" id="hFh">100%</div>
+        <div class="bar"><i class="fh" id="hFhBar" style="width:100%"></i></div>
+      </div>
+    </div>
+    <div id="meter">
+      <div class="lab" id="meterLab">TIME YOUR SWING!</div>
+      <div class="track"><div class="zone"></div><div class="needle" id="needle"></div></div>
+    </div>
+  </div>
+  <div id="sheet">
+    <div id="tabs"></div>
+    <div id="panel"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<div class="modal-back hidden" id="modalBack"><div class="modal" id="modal"></div></div>
+<div id="eraBanner"><div class="box"><div id="eraIco" style="font-size:60px">🪵</div><div class="t" id="eraTitle"></div><div class="s" id="eraSub"></div></div></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   CONFIG — all balancing lives here
+   ============================================================ */
+var CONFIG = {
+  VERSION: 2,
+  saveKey: 'timberEmpire_v2',
+  sessionKey: 'timberEmpire_session',
+  autosaveMs: 3000,
+  offlineCapSec: 8*60*60,
+  costMult: 1.15,
+
+  // active play
+  stamina: { max: 100, swingCost: 6, regen: 9, regenDelay: 1.2 },
+  crit: { min: 2, max: 3 },
+
+  // tree types: hp, value, chopTime feel (hp per swing handled by tool damage)
+  trees: {
+    pine:    { hp: 3,   value: 3,   grow: 8,  color:'#3f7d3a', name:'Pine' },
+    oak:     { hp: 8,   value: 10,  grow: 16, color:'#5a8f3f', name:'Oak' },
+    redwood: { hp: 25,  value: 40,  grow: 40, color:'#7a4a2a', name:'Redwood' },
+    golden:  { hp: 40,  value: 200, grow: 80, color:'#f4c542', name:'Golden', rare:true }
+  },
+
+  // tools (damage per swing = base)
+  tools: [
+    { id:'saw',    name:'Rusty Hand Saw',  cost:0,    dmg:1,  critBonus:1,   ico:'🪚' },
+    { id:'axe',    name:'Steel Axe',       cost:40,   dmg:2,  critBonus:1.2, ico:'🪓' },
+    { id:'better', name:'Two-Hand Axe',    cost:350,  dmg:4,  critBonus:1.4, ico:'⚒️' },
+    { id:'chain',  name:'Chainsaw',        cost:2000, dmg:9,  critBonus:1.6, ico:'⛓️' },
+    { id:'pro',    name:'Pro Chainsaw',    cost:12000,dmg:22, critBonus:2,   ico:'🪚' }
+  ],
+
+  // workers: cost, income/sec (in logs), also visible on screen
+  workers: [
+    { id:'jack',   name:'Lumberjack',  cost:60,    inc:0.4,  ico:'🧑‍🌾', cap:0 },
+    { id:'foreman',name:'Foreman',     cost:900,   inc:2.5,  ico:'👷', cap:0 },
+    { id:'driver', name:'Driver',      cost:8000,  inc:15,   ico:'🧑‍🔧', cap:0 },
+    { id:'engineer',name:'Engineer',   cost:60000, inc:110,  ico:'🛠️', cap:0 }
+  ],
+
+  // vehicles (multiply transport speed / unlock bonus)
+  vehicles: [
+    { id:'cart',   name:'Wooden Cart',   cost:200,   inc:0.8, ico:'🛒' },
+    { id:'pickup', name:'Pickup Truck',  cost:1500,  inc:6,   ico:'🛻' },
+    { id:'truck',  name:'Log Truck',     cost:12000, inc:45,  ico:'🚚' },
+    { id:'train',  name:'Timber Train',  cost:150000,inc:400, ico:'🚂' },
+    { id:'ship',   name:'Cargo Ship',    cost:900000,inc:2500, ico:'🚢' }
+  ],
+
+  // buildings
+  buildings: [
+    { id:'sawmill',   name:'Sawmill',          cost:500,   inc:1.5,  ico:'🏭' },
+    { id:'furniture', name:'Furniture Factory',cost:5000,  inc:12,   ico:'🪑' },
+    { id:'paper',     name:'Paper Mill',      cost:30000, inc:70,   ico:'📄' },
+    { id:'warehouse', name:'Warehouse',       cost:250,   inc:0,    ico:'🏚️', storage:true },
+    { id:'power',     name:'Power Plant',     cost:100000,inc:220,  ico:'⚡' },
+    { id:'lab',       name:'Research Lab',    cost:400000,inc:900,  ico:'🔬' }
+  ],
+
+  // one-time / tiered upgrades (apply multipliers)
+  upgrades: [
+    { id:'boots',   name:'Work Boots',      cost:100,   desc:'+20 max stamina', ico:'🥾', max:1 },
+    { id:'drink',   name:'Energy Drink',    cost:600,   desc:'+50% stamina regen', ico:'🥤', max:1 },
+    { id:'gloves',  name:'Grip Gloves',     cost:2500,  desc:'+25% crit window', ico:'🧤', max:1 },
+    { id:'sharp',   name:'Sharpening Stone',cost:800,   desc:'+25% tool damage', ico:'🗡️', max:5 },
+    { id:'tree',    name:'Forest Expansion',cost:1500,  desc:'+trees & forest health', ico:'🌲', max:5 },
+    { id:'active',  name:'Active Focus',    cost:3000,  desc:'+50% active swing value', ico:'🔥', max:1 }
+  ],
+
+  // eras (unlocked by total earned milestones)
+  eras: [
+    { id:'e0', name:'Hand Saw Lumberjack', money:0,       ico:'🪚', bg:'#1c2a1f', skyTop:'#5b7bb0', skyBot:'#c9d8a8' },
+    { id:'e1', name:'Axe & Cart',          money:1500,    ico:'🪓', bg:'#23301f', skyTop:'#5b7bb0', skyBot:'#c9d8a8' },
+    { id:'e2', name:'Chainsaw & Pickup',   money:12000,   ico:'⛓️', bg:'#273220', skyTop:'#5b7bb0', skyBot:'#c9d8a8' },
+    { id:'e3', name:'Sawmill Town',        money:80000,   ico:'🏭', bg:'#2c3824', skyTop:'#6b87b8', skyBot:'#d8cf9a' },
+    { id:'e4', name:'Factory Complex',     money:600000,  ico:'🏢', bg:'#333b26', skyTop:'#6b87b8', skyBot:'#d8cf9a' },
+    { id:'e5', name:'Global Empire',       money:4000000, ico:'🌍', bg:'#3a3a2a', skyTop:'#7b90c0', skyBot:'#e0d0a0' }
+  ],
+
+  // prestige skill tree (8 nodes)
+  skills: [
+    { id:'s1', name:'Strong Back',     desc:'+25% active value',  cost:1, ico:'💪' },
+    { id:'s2', name:'Quick Recovery',  desc:'+25% stamina regen', cost:1, ico:'⚡' },
+    { id:'s3', name:'Efficient Crew',  desc:'+50% worker income', cost:2, ico:'🧑‍🌾' },
+    { id:'s4', name:'Sharp Tools',     desc:'+50% tool damage',   cost:2, ico:'🪓' },
+    { id:'s5', name:'Deep Pockets',    desc:'Start +$5,000',      cost:3, ico:'💰' },
+    { id:'s6', name:'Green Thumb',     desc:'Trees regrow 2x',    cost:3, ico:'🌱' },
+    { id:'s7', name:'Market Guru',     desc:'+25% sell price',    cost:4, ico:'📈' },
+    { id:'s8', name:'Empire Vision',   desc:'All income +25%',    cost:5, ico:'👑' }
+  ],
+
+  // events (chance per roll, every 60-120s)
+  events: {
+    minDelay: 60, maxDelay: 120,
+    boom:  { name:'Market Boom',   dur:30, ico:'📈' },
+    storm: { name:'Storm',         dur:20, ico:'⛈️' },
+    fire:  { name:'Forest Fire',   dur:18, ico:'🔥' },
+    order: { name:'Big Order',     dur:60, ico:'📦' },
+    wildlife:{name:'Wildlife',     dur:15, ico:'🦌' }
+  },
+
+  // achievements (15)
+  achievements: [
+    { id:'a1',  name:'First Cut',      desc:'Chop your first tree',       ico:'🪚', rew:10 },
+    { id:'a2',  name:'Crit Master',    desc:'Land 10 critical hits',      ico:'🎯', rew:50 },
+    { id:'a3',  name:'Hired Help',     desc:'Hire your first lumberjack', ico:'🧑‍🌾', rew:100 },
+    { id:'a4',  name:'Centi',          desc:'Earn $100 total',            ico:'💰', rew:150 },
+    { id:'a5',  name:'Fifty Trees',    desc:'Chop 50 trees',              ico:'🌲', rew:300 },
+    { id:'a6',  name:'Sawmill Owner',  desc:'Build a Sawmill',            ico:'🏭', rew:500 },
+    { id:'a7',  name:'Kilo Club',      desc:'Earn $1,000 total',          ico:'💵', rew:800 },
+    { id:'a8',  name:'Golden Find',    desc:'Chop a Golden Tree',         ico:'🌟', rew:2000 },
+    { id:'a9',  name:'Truck Fleet',    desc:'Own 5 vehicles',             ico:'🚚', rew:3000 },
+    { id:'a10', name:'Mega Earn',      desc:'Earn $1,000,000 total',      ico:'💎', rew:10000 },
+    { id:'a11', name:'Event Hero',     desc:'Clear 5 events',             ico:'⚡', rew:5000 },
+    { id:'a12', name:'Warehouse Max',  desc:'Upgrade warehouse to max',   ico:'🏚️', rew:4000 },
+    { id:'a13', name:'Empire',         desc:'Reach Global Empire era',    ico:'🌍', rew:50000 },
+    { id:'a14', name:'Prestige',       desc:'Retire for the first time',  ico:'👑', rew:0 },
+    { id:'a15', name:'Streak',         desc:'Log in 3 days in a row',     ico:'📅', rew:2000 }
+  ],
+
+  daily: { base: 200, streakBonus: 100 }
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+var state = null;
+function defaultState(){
+  return {
+    v: CONFIG.VERSION,
+    money: 0, lifetime: 0, logs: 0, storageMax: 20,
+    stamina: CONFIG.stamina.max,
+    tool: 0,
+    owned: { tools:{saw:1}, workers:{}, vehicles:{}, buildings:{}, upgrades:{} },
+    era: 0,
+    forestHealth: 100,
+    price: 5, priceHistory: [],
+    event: null, eventT: 0,
+    crits: 0, treesCut: 0, eventsCleared: 0,
+    legacy: 0, skills: {},
+    ach: {}, dailyLast: '', dailyStreak: 0,
+    stats: { earned:0, bestIncome:0, offline:0 },
+    trees: [], particles: [],
+    workersOnScreen: [],
+    muted: false,
+    lastSaved: Date.now(),
+    tutorial: true, tutStep: 0,
+    nextEventAt: Date.now() + 90000
+  };
+}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function $(id){ return document.getElementById(id); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function rnd(a,b){ return a+Math.random()*(b-a); }
+function rndi(a,b){ return Math.floor(rnd(a,b+1)); }
+function fmt(n){
+  n = Math.max(0, Math.floor(n));
+  if(n < 1000) return String(n);
+  var u=['K','M','B','T'], v=n, i=-1;
+  while(v>=1000 && i<u.length-1){ v/=1000; i++; }
+  if(i<u.length) return (v>=100?Math.floor(v):v.toFixed(1))+u[i];
+  return n.toExponential(1).replace('e+','e');
+}
+function fmtMoney(n){ return '$'+fmt(n); }
+function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+
+/* ============================================================
+   SAVE / LOAD
+   ============================================================ */
+function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function safeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){ storageWarn(); } }
+function safeDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+var warnedStorage = false;
+function storageWarn(){ if(!warnedStorage){ warnedStorage=true; toast('⚠️','Storage unavailable — progress won\'t save'); } }
+
+var sessionId = safeGet(CONFIG.sessionKey) || (function(){ var s=Date.now().toString(36)+Math.random().toString(36).slice(2,7); safeSet(CONFIG.sessionKey, s); return s; })();
+
+function save(){
+  state.lastSaved = Date.now();
+  safeSet(CONFIG.saveKey, JSON.stringify(state));
+}
+function load(){
+  var raw = safeGet(CONFIG.saveKey);
+  if(!raw){ state = defaultState(); return; }
+  try{
+    var s = JSON.parse(raw);
+    state = migrate(s);
+  }catch(e){ state = defaultState(); }
+}
+function migrate(s){
+  if(!s || typeof s !== 'object') return defaultState();
+  var d = defaultState();
+  // merge known keys, preserve extras, coerce types
+  for(var k in d){ if(k in s) d[k] = s[k]; }
+  // VERSION migrations (future): if s.v < CONFIG.VERSION apply fixes here
+  if(s.v < 2){ /* example migration: nothing needed yet */ }
+  d.v = CONFIG.VERSION;
+  d.owned = Object.assign({tools:{saw:1},workers:{},vehicles:{},buildings:{},upgrades:{}}, d.owned);
+  if(!d.trees || !d.trees.length) d.trees = [];
+  if(!d.particles) d.particles = [];
+  if(!d.workersOnScreen) d.workersOnScreen = [];
+  if(!d.priceHistory) d.priceHistory = [];
+  return d;
+}
+
+function exportSave(){
+  try{ return btoa(unescape(encodeURIComponent(JSON.stringify(state)))); }catch(e){ return ''; }
+}
+function importSave(b64){
+  try{
+    var j = JSON.parse(decodeURIComponent(escape(atob(b64))));
+    state = migrate(j); save(); rebuild(); renderWorld();
+    toast('✅','Save imported');
+  }catch(e){ toast('❌','Invalid save data'); }
+}
+
+/* offline progress */
+function offlineProgress(){
+  var away = (Date.now() - state.lastSaved) / 1000;
+  if(away <= 30 || away <= 0) return;
+  var cap = CONFIG.offlineCapSec;
+  var t = Math.min(away, cap);
+  var inc = incomePerSec() * 0.5; // reduced-but-fair
+  if(inc <= 0) return;
+  var earned = inc * t;
+  state.money += earned; state.lifetime += earned;
+  state.stats.offline += earned;
+  var mins = Math.round(t/60);
+  showModal('<h2>👋 Welcome back!</h2><p>Your empire kept working while you were away ('+mins+' min):</p><div class="big">'+fmtMoney(earned)+'</div><div class="btns"><button class="ok" id="wbOk">Collect</button></div>');
+  $('wbOk').addEventListener('click', hideModal);
+}
+
+/* ============================================================
+   DERIVED / ECONOMY
+   ============================================================ */
+function ownedCount(group, id){ return (state.owned[group] && state.owned[group][id]) || 0; }
+function toolDamage(){
+  var t = CONFIG.tools[state.tool];
+  var m = 1 + 0.25*(ownedCount('upgrades','sharp')||0);
+  if(state.skills.s4) m *= 1.5;
+  return t.dmg * m;
+}
+function maxStamina(){
+  return CONFIG.stamina.max + 20*(ownedCount('upgrades','boots')||0);
+}
+function staminaRegen(){
+  var r = CONFIG.stamina.regen;
+  if(ownedCount('upgrades','drink')) r *= 1.5;
+  if(state.skills.s2) r *= 1.25;
+  return r;
+}
+function critWindow(){
+  var w = 0.16;
+  if(ownedCount('upgrades','gloves')) w *= 1.25;
+  return clamp(w, 0.05, 0.4);
+}
+function sellMult(){
+  var m = 1;
+  if(state.skills.s7) m *= 1.25;
+  if(state.event && state.event.type==='boom') m *= 2;
+  return m;
+}
+function activeMult(){
+  var m = 1;
+  if(ownedCount('upgrades','active')) m *= 1.5;
+  if(state.skills.s1) m *= 1.25;
+  return m;
+}
+function forestMult(){
+  return clamp(state.forestHealth/100, 0.4, 1);
+}
+function empireMult(){ return state.skills.s8 ? 1.25 : 1; }
+
+function incomePerSec(){
+  var s = 0;
+  CONFIG.workers.forEach(function(w){ s += w.inc * ownedCount('workers', w.id); });
+  CONFIG.vehicles.forEach(function(v){ s += v.inc * ownedCount('vehicles', v.id); });
+  CONFIG.buildings.forEach(function(b){ s += b.inc * ownedCount('buildings', b.id); });
+  s *= forestMult();
+  if(state.skills.s3) s *= 1.5;
+  s *= empireMult();
+  return s;
+}
+function incomeValue(){ return incomePerSec() * state.price; }
+
+function totalIncome(){ return incomePerSec(); }
+function storageCap(){
+  var c = state.storageMax;
+  var wh = ownedCount('buildings','warehouse');
+  return c + wh * 40;
+}
+
+/* ============================================================
+   MARKET
+   ============================================================ */
+function updateMarket(dt){
+  // price drifts, mean-reverting
+  var drift = (5 - state.price) * 0.001 * dt + rnd(-0.02,0.02) * dt;
+  state.price = clamp(state.price + drift, 0.5, 25);
+  state.priceHistory.push({ t: Date.now(), p: state.price });
+  if(state.priceHistory.length > 60) state.priceHistory.shift();
+}
+function sellLogs(all){
+  var n = all ? state.logs : Math.min(10, state.logs);
+  if(n <= 0){ toast('📦','No logs to sell'); return; }
+  var val = n * state.price * sellMult();
+  state.money += val; state.lifetime += val;
+  state.logs -= n;
+  state.stats.earned += val;
+  sfx('sell');
+  toast('💰','Sold '+n+' logs for '+fmtMoney(val));
+}
+
+/* ============================================================
+   TREES
+   ============================================================ */
+var TREE_TYPES = ['pine','oak','redwood'];
+function makeTree(x, forceType){
+  var type = forceType || TREE_TYPES[rndi(0,2)];
+  if(Math.random() < 0.03) type = 'golden';
+  var cfg = CONFIG.trees[type];
+  var size = rnd(0.7, 1.4);
+  return { x:x, y:0, type:type, hp:cfg.hp, maxHp:cfg.hp, size:size, state:'idle', phase:rnd(0,Math.PI*2) };
+}
+function spawnInitialForest(){
+  var w = cv.width;
+  var n = 14 + 5*(ownedCount('upgrades','tree')||0);
+  for(var i=0;i<n;i++){
+    state.trees.push(makeTree(rnd(0.05,0.95)*w));
+  }
+}
+function regrowTrees(dt){
+  var capTrees = 14 + 5*(ownedCount('upgrades','tree')||0);
+  var missing = capTrees - state.trees.length;
+  if(missing > 0 && Math.random() < dt*0.15*(state.skills.s6?2:1)){
+    state.trees.push(makeTree(rnd(0.05,0.95)*cv.width));
+  }
+  // forest health drifts toward tree count ratio
+  var target = clamp(state.trees.length/capTrees*100, 0, 100);
+  state.forestHealth = lerp(state.forestHealth, target, dt*0.2);
+}
+
+/* ============================================================
+   ACTIVE PLAY — chopping
+   ============================================================ */
+var swing = { active:false, dir:1, pos:0, speed:1.4, target:null, staminaDrain:false };
+var slowmo = 0;
+
+function startSwing(){
+  if(state.stamina < CONFIG.stamina.swingCost){ toast('😮‍💨','Too tired — rest a moment'); return; }
+  var t = findChoppableTree();
+  if(!t){ toast('🌲','No tree to chop — wait for regrowth'); return; }
+  swing.active = true; swing.dir = 1; swing.pos = 0; swing.target = t;
+  $('meter').style.opacity = '1';
+}
+function swingAction(){
+  if(swing.active){ resolveSwing(); }
+  else { startSwing(); }
+}
+function findChoppableTree(){
+  var best = null;
+  for(var i=0;i<state.trees.length;i++){
+    var t = state.trees[i];
+    if(t.state !== 'idle') continue;
+    if(!best || t.x < best.x) best = t;
+  }
+  return best;
+}
+function resolveSwing(){
+  // pos 0..1, green zone is centered at 0.5 width critWindow
+  var cw = critWindow();
+  var center = 0.5;
+  var hit = 1 - Math.abs(swing.pos - center)*2; // 1 at center
+  var isCrit = Math.abs(swing.pos - center) < cw/2;
+
+  state.stamina = Math.max(0, state.stamina - CONFIG.stamina.swingCost);
+  var dmg = toolDamage();
+  if(isCrit){
+    dmg *= rnd(CONFIG.crit.min, CONFIG.crit.max);
+    dmg *= (CONFIG.tools[state.tool].critBonus || 1);
+    state.crits++;
+    critHit();
+  } else {
+    dmg *= (0.4 + hit*0.4); // weak hit scaling
+  }
+  var t = swing.target;
+  if(t){
+    t.hp -= dmg;
+    spawnChips(t, isCrit);
+    if(t.hp <= 0){
+      fellTree(t);
+    }
+  }
+  swing.active = false; swing.target = null;
+  $('meter').style.opacity = '0';
+  sfx(isCrit ? 'crit' : 'chop');
+  if(state.crits === 10) unlockAch('a2');
+}
+function critHit(){
+  shake = 8;
+  vibrate(30);
+  toast('🎯','CRITICAL!');
+}
+function fellTree(t){
+  t.state = 'falling';
+  t.fallDir = (Math.random() < 0.5) ? -1 : 1;
+  t.fallT = 0;
+  slowmo = 0.25;
+  // fall direction choice window
+  showFallChoice(t);
+}
+var falling = null;
+function showFallChoice(t){
+  falling = t;
+  $('meterLab').textContent = '⬅️ TAP LEFT or RIGHT ➡️';
+  $('meter').style.opacity = '1';
+  // wait for direction input (arrow keys / swipe / tap zones)
+}
+function completeFall(){
+  if(!falling) return;
+  var t = falling;
+  var logs = Math.max(1, Math.round(CONFIG.trees[t.type].value * t.size * (1 + Math.floor(state.tool/2))));
+  logs = Math.round(logs * activeMult());
+  var val = logs * state.price * sellMult();
+  // bonus if fell toward vehicles side (right = cart)
+  var bonus = false;
+  if(t.fallDir > 0 && ownedCount('vehicles','cart') > 0){ logs = Math.round(logs*1.5); bonus = true; }
+  state.logs += logs;
+  if(state.logs > storageCap()) state.logs = storageCap();
+  state.money += val; state.lifetime += val; state.stats.earned += val;
+  state.treesCut++;
+  state.trees = state.trees.filter(function(x){ return x !== t; });
+  sfx('fall');
+  spawnFloat('+'+fmt(val)+' & '+logs+'🪵', t.x);
+  if(t.type==='golden'){ unlockAch('a8'); toast('🌟','GOLDEN TREE!'); }
+  if(state.treesCut===1) unlockAch('a1');
+  if(state.treesCut>=50) unlockAch('a5');
+  falling = null;
+  $('meterLab').textContent = 'TIME YOUR SWING!';
+  $('meter').style.opacity = '0';
+}
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+function rollEvent(){
+  var types = ['boom','storm','fire','order','wildlife'];
+  var t = types[rndi(0,types.length-1)];
+  var cfg = CONFIG.events[t];
+  state.event = { type:t, name:cfg.name, ico:cfg.ico, dur:cfg.dur, t:0, progress:0 };
+  state.eventT = 0;
+  if(t==='order'){
+    state.event.progress = 0;
+    state.event.target = rndi(20,60);
+  }
+  toast(cfg.ico, 'Event: '+cfg.name+'!');
+  sfx('event');
+}
+function clearEvent(){
+  state.eventsCleared++;
+  if(state.eventsCleared>=5) unlockAch('a11');
+  var r = rndi(100,400);
+  state.money += r; state.lifetime += r;
+  toast('✅','Event cleared! +'+fmtMoney(r));
+  state.event = null;
+}
+function updateEvent(dt){
+  if(!state.event) return;
+  state.eventT += dt;
+  var e = state.event;
+  if(e.type==='storm' || e.type==='wildlife' || e.type==='boom'){
+    if(state.eventT >= e.dur){ clearEvent(); }
+  } else if(e.type==='fire'){
+    e.progress += dt; // player must tap fire
+    if(e.progress >= e.dur){ // failed, lose some forest
+      state.forestHealth = Math.max(10, state.forestHealth - 15);
+      state.trees = state.trees.slice(0, Math.max(4, Math.floor(state.trees.length*0.7)));
+      toast('🔥','Fire burned some trees!');
+      state.event = null;
+    }
+  } else if(e.type==='order'){
+    if(e.progress >= e.target){
+      var pay = e.target * 25;
+      state.money += pay; state.lifetime += pay;
+      toast('📦','Order complete! +'+fmtMoney(pay));
+      state.event = null; state.eventsCleared++;
+    }
+  }
+}
+
+/* ============================================================
+   ERA / PROGRESSION
+   ============================================================ */
+function currentEra(){
+  var e = 0;
+  for(var i=0;i<CONFIG.eras.length;i++){ if(state.lifetime >= CONFIG.eras[i].money) e = i; }
+  return e;
+}
+function checkEra(){
+  var e = currentEra();
+  if(e !== state.era){
+    state.era = e;
+    var er = CONFIG.eras[e];
+    document.body.style.background = er.bg;
+    $('eraIco').textContent = er.ico;
+    $('eraTitle').textContent = er.name;
+    $('eraSub').textContent = 'Era '+(e+1)+' of 6 unlocked!';
+    var b = $('eraBanner');
+    b.style.opacity = '1';
+    setTimeout(function(){ b.style.opacity = '0'; }, 2600);
+    sfx('era');
+    if(e>=5) unlockAch('a13');
+  }
+}
+
+/* ============================================================
+   PRESTIGE
+   ============================================================ */
+function potentialLegacy(){
+  var v = Math.floor(Math.sqrt(state.lifetime / 500000));
+  return v;
+}
+function doPrestige(){
+  var lp = potentialLegacy();
+  if(lp <= 0){ toast('👑','Earn more first'); return; }
+  state.legacy += lp;
+  state.money = 0; state.logs = 0;
+  state.owned = { tools:{saw:1}, workers:{}, vehicles:{}, buildings:{}, upgrades:{} };
+  state.tool = 0; state.era = 0; state.forestHealth = 100;
+  state.trees = []; spawnInitialForest();
+  state.price = 5; state.priceHistory = [];
+  state.event = null;
+  if(state.skills.s5) state.money += 5000;
+  unlockAch('a14');
+  toast('👑','Retired! +'+lp+' Legacy Point'+(lp>1?'s':''));
+  rebuild(); renderWorld();
+}
+function buySkill(s){
+  if(state.skills[s.id]) return;
+  if(state.legacy < s.cost) return;
+  state.legacy -= s.cost;
+  state.skills[s.id] = true;
+  toast('✨','Skill: '+s.name);
+  rebuild();
+}
+
+/* ============================================================
+   ACHIEVEMENTS
+   ============================================================ */
+function unlockAch(id){
+  if(state.ach[id]) return;
+  var a = CONFIG.achievements.find(function(x){ return x.id===id; });
+  if(!a) return;
+  state.ach[id] = true;
+  if(a.rew){ state.money += a.rew; state.lifetime += a.rew; }
+  toast('🏆','Achievement: '+a.name+(a.rew?' +'+fmt(a.rew):''));
+}
+
+/* ============================================================
+   DAILY LOGIN
+   ============================================================ */
+function dailyLogin(){
+  var today = todayStr();
+  if(state.dailyLast === today) return;
+  var yest = new Date(Date.now()-86400000);
+  var ystr = yest.getFullYear()+'-'+(yest.getMonth()+1)+'-'+yest.getDate();
+  if(state.dailyLast === ystr) state.dailyStreak++;
+  else state.dailyStreak = 1;
+  state.dailyLast = today;
+  var reward = CONFIG.daily.base + (state.dailyStreak-1)*CONFIG.daily.streakBonus;
+  state.money += reward; state.lifetime += reward;
+  if(state.dailyStreak>=3) unlockAch('a15');
+  showModal('<h2>📅 Daily Reward</h2><p>Streak: '+state.dailyStreak+' day'+(state.dailyStreak>1?'s':'')+'</p><div class="big">+'+fmtMoney(reward)+'</div><div class="btns"><button class="ok" id="dlOk">Claim</button></div>');
+  $('dlOk').addEventListener('click', hideModal);
+}
+
+/* ============================================================
+   SHOP / PURCHASES
+   ============================================================ */
+function buy(group, id){
+  var list = CONFIG[group];
+  var item = list.find(function(x){ return x.id===id; });
+  if(!item) return;
+  if(group==='tools'){
+    // tool index = position in tools array
+    var idx = CONFIG.tools.findIndex(function(x){ return x.id===id; });
+    if(state.money < item.cost) return;
+    state.money -= item.cost;
+    state.tool = idx;
+    toast(item.ico,'Equipped: '+item.name);
+  } else if(group==='upgrades'){
+    var cur = ownedCount('upgrades', id);
+    if(cur >= (item.max||1)) return;
+    var cost = upgradeCost(item, cur);
+    if(state.money < cost) return;
+    state.money -= cost;
+    state.owned.upgrades[id] = cur+1;
+    if(id==='tree'){ /* forest expansion already handled via capTrees */ }
+    toast(item.ico, item.name+' upgraded!');
+    if(id==='warehouse' || id==='tree'){ /* n/a */ }
+  } else {
+    var n = ownedCount(group, id);
+    var cost = Math.floor(item.cost * Math.pow(CONFIG.costMult, n));
+    if(state.money < cost) return;
+    state.money -= cost;
+    state.owned[group][id] = n+1;
+    // spawn visual
+    spawnEntity(group, item);
+    toast(item.ico, item.name+' purchased!');
+    checkPurchaseAch(group, item);
+  }
+  if(id==='boots'){ state.stamina = maxStamina(); }
+  rebuild(); renderWorld();
+}
+function upgradeCost(item, cur){ return Math.floor(item.cost * Math.pow(2, cur)); }
+function checkPurchaseAch(group, item){
+  if(group==='workers') unlockAch('a3');
+  if(group==='buildings' && item.id==='sawmill') unlockAch('a6');
+  var vc = 0; CONFIG.vehicles.forEach(function(v){ vc += ownedCount('vehicles', v.id); });
+  if(vc>=5) unlockAch('a9');
+}
+
+/* ============================================================
+   WORLD / RENDER (canvas, procedural)
+   ============================================================ */
+var cv = $('cv'), ctx = cv.getContext('2d');
+var W=0, H=0, dpr=1;
+var shake = 0, shakeX = 0, shakeY = 0;
+var time = 0, dayPhase = 0;
+
+function resize(){
+  dpr = Math.min(window.devicePixelRatio||1, 2);
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize);
+
+// particle pool
+var particles = [];
+var MAXP = 220;
+function spawnChips(tree, crit){
+  var n = crit ? 12 : 6;
+  for(var i=0;i<n;i++){
+    if(particles.length >= MAXP) particles.shift();
+    particles.push({ x:tree.x, y:H*0.55, vx:rnd(-140,140), vy:rnd(-220,-40), life:rnd(0.4,0.9), t:0, col:'#8a5a2a', sz:rnd(2,5), grav:500, type:'chip' });
+  }
+}
+function spawnFloat(txt, x){
+  if(particles.length >= MAXP) particles.shift();
+  particles.push({ x:x, y:H*0.4, vy:-50, life:1.2, t:0, txt:txt, type:'text' });
+}
+function spawnLeaf(){
+  if(particles.length >= MAXP) return;
+  particles.push({ x:rnd(0,W), y:-10, vx:rnd(-15,15), vy:rnd(20,40), life:6, t:0, col:['#7bc46a','#b7a04a','#c9843a'][rndi(0,2)], sz:rnd(2,4), grav:0, type:'leaf' });
+}
+function spawnEntity(group, item){
+  // add a visual worker/vehicle marker
+  if(group==='workers'){
+    state.workersOnScreen.push({ x:rnd(0.1,0.9)*W, ico:item.ico, phase:rnd(0,6), type:'worker' });
+    if(state.workersOnScreen.length>12) state.workersOnScreen.shift();
+  } else if(group==='vehicles' || group==='buildings'){
+    state.workersOnScreen.push({ x:rnd(0.1,0.9)*W, ico:item.ico, phase:rnd(0,6), type:'entity' });
+  }
+}
+
+function renderWorld(){
+  resize();
+  var er = CONFIG.eras[state.era];
+  var skyT = er.skyTop, skyB = er.skyBot;
+  // day/night cycle (2 min)
+  dayPhase = (time % 120) / 120;
+  var night = Math.sin(dayPhase*Math.PI);
+  var dark = clamp(night*0.45, 0, 0.45);
+
+  // shake
+  if(shake > 0){ shakeX = rnd(-shake,shake); shakeY = rnd(-shake,shake); shake *= 0.85; } else { shakeX=shakeY=0; }
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  // sky
+  var g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, mix(skyT,'#101820',dark));
+  g.addColorStop(1, mix(skyB,'#182820',dark));
+  ctx.fillStyle = g;
+  ctx.fillRect(-20,-20,W+40,H+40);
+
+  // sun/moon
+  ctx.fillStyle = dark>0.2 ? 'rgba(240,240,255,0.8)' : 'rgba(255,240,180,0.9)';
+  ctx.beginPath(); ctx.arc(W*0.8, H*0.18, 22, 0, Math.PI*2); ctx.fill();
+
+  // parallax mountains (era-based)
+  drawMountains(dark);
+  // ground
+  ctx.fillStyle = mix('#3a4a2f', '#12180f', dark);
+  ctx.fillRect(-20, H*0.55, W+40, H*0.45+20);
+
+  // buildings silhouettes (right side) grow with era
+  drawBuildings(dark);
+
+  // trees
+  state.trees.forEach(drawTree);
+
+  // workers/entities
+  drawEntities(dark);
+
+  // particles
+  drawParticles(dark);
+
+  // fire overlay if fire event
+  if(state.event && state.event.type==='fire') drawFire();
+
+  // storm overlay
+  if(state.event && state.event.type==='storm'){ ctx.fillStyle='rgba(60,80,120,0.25)'; ctx.fillRect(-20,-20,W+40,H+40); }
+
+  ctx.restore();
+
+  // fall-direction hint arrows
+  if(falling){ drawFallArrows(); }
+}
+
+function mix(c1, c2, t){
+  // hex mix
+  var a = hexRgb(c1), b = hexRgb(c2);
+  return 'rgb('+Math.round(lerp(a[0],b[0],t))+','+Math.round(lerp(a[1],b[1],t))+','+Math.round(lerp(a[2],b[2],t))+')';
+}
+function hexRgb(h){
+  h = h.replace('#','');
+  if(h.length===3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+
+function drawMountains(dark){
+  ctx.fillStyle = mix('#2c3a30','#0d140f',dark);
+  ctx.beginPath(); ctx.moveTo(0,H*0.55);
+  for(var x=0;x<=W;x+=40){ ctx.lineTo(x, H*0.55 - Math.sin(x*0.008)*30 - 20); }
+  ctx.lineTo(W,H*0.55); ctx.closePath(); ctx.fill();
+}
+function drawBuildings(dark){
+  var e = state.era;
+  var count = Math.min(6, e*1 + (state.owned.buildings.sawmill?1:0) + (state.owned.buildings.furniture?1:0) + (state.owned.buildings.paper?1:0));
+  for(var i=0;i<count;i++){
+    var x = W - 20 - i*46;
+    var h = 40 + i*8;
+    ctx.fillStyle = mix('#3d3a2f','#141210',dark);
+    ctx.fillRect(x, H*0.55-h, 34, h);
+    ctx.fillStyle = mix('#e8d080','#1a1a12',dark);
+    for(var wy=0;wy<2;wy++){ ctx.fillRect(x+6+wy*12, H*0.55-h+10+wy*14, 8, 8); }
+    // chimney smoke for factories
+    if(i>0 && e>=3){ drawSmoke(x+17, H*0.55-h-8, dark); }
+  }
+}
+function drawSmoke(x,y,dark){
+  var t = time;
+  ctx.fillStyle = 'rgba(200,200,200,0.5)';
+  for(var i=0;i<3;i++){
+    var sx = x + Math.sin(t+i*2)*6;
+    var sy = y - ((t*20+i*15)%40);
+    ctx.beginPath(); ctx.arc(sx, sy, 5-i, 0, Math.PI*2); ctx.fill();
+  }
+}
+function drawTree(t){
+  var cfg = CONFIG.trees[t.type];
+  var y = H*0.55;
+  var x = t.x, sway = Math.sin(time*1.5 + t.phase)*2;
+  var s = t.size;
+  // falling animation
+  if(t.state==='falling'){
+    t.fallT = (t.fallT||0) + 0.06;
+    var ang = t.fallDir * Math.min(t.fallT*2, Math.PI/2);
+    ctx.save(); ctx.translate(x,y); ctx.rotate(ang); x=0; y=0;
+  }
+  // trunk
+  ctx.fillStyle = cfg.color;
+  ctx.fillRect(x-5*s, y-50*s, 10*s, 50*s);
+  // canopy (per-type)
+  ctx.beginPath();
+  if(t.type==='pine'){
+    ctx.moveTo(x, y-110*s); ctx.lineTo(x-26*s, y-50*s); ctx.lineTo(x+26*s, y-50*s);
+  } else {
+    ctx.arc(x, y-60*s, 30*s, 0, Math.PI*2);
+  }
+  ctx.fillStyle = t.type==='golden' ? '#f4c542' : (t.type==='redwood' ? '#5f8a3f' : '#4c8a3f');
+  ctx.fill();
+  if(t.type==='golden'){
+    // sparkle
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    var sp = Math.sin(time*3+t.phase)>0;
+    if(sp){ ctx.fillRect(x-2, y-75*s, 4, 4); ctx.fillRect(x+6, y-95*s, 3, 3); }
+  }
+  // HP bar if damaged
+  if(t.hp < t.maxHp){
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x-14, y-60*s-12, 28, 4);
+    ctx.fillStyle = '#7bd88f'; ctx.fillRect(x-14, y-60*s-12, 28*(t.hp/t.maxHp), 4);
+  }
+  if(t.state==='falling') ctx.restore();
+}
+function drawEntities(dark){
+  var y = H*0.55;
+  state.workersOnScreen.forEach(function(en){
+    var x = en.x + Math.sin(time + en.phase)*8;
+    ctx.font = '16px sans-serif';
+    ctx.fillText(en.ico, x, y-6);
+  });
+}
+function drawParticles(dark){
+  for(var i=particles.length-1;i>=0;i--){
+    var p = particles[i];
+    p.t += 1/60;
+    if(p.type==='chip'){
+      p.vy += p.grav*1/60; p.x += p.vx*1/60; p.y += p.vy*1/60;
+      ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, p.sz, p.sz);
+    } else if(p.type==='leaf'){
+      p.x += p.vx*1/60; p.y += p.vy*1/60;
+      ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, p.sz, p.sz);
+    } else if(p.type==='text'){
+      p.y += p.vy*1/60;
+      ctx.fillStyle = 'rgba(255,220,120,'+clamp(p.life-p.t,0,1)+')';
+      ctx.font = 'bold 14px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(p.txt, p.x, p.y);
+    }
+    if(p.t >= p.life){ particles.splice(i,1); }
+  }
+}
+function drawFire(){
+  for(var i=0;i<6;i++){
+    var fx = rnd(0,W), fy = H*0.55 - rnd(0,60);
+    ctx.fillStyle = 'rgba('+rndi(200,255)+','+rndi(80,160)+',20,0.7)';
+    ctx.beginPath(); ctx.arc(fx, fy, rnd(4,12), 0, Math.PI*2); ctx.fill();
+  }
+}
+function drawFallArrows(){
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = 'bold 40px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('⬅️', 70, H*0.4);
+  ctx.fillText('➡️', W-70, H*0.4);
+  ctx.restore();
+}
+
+/* ============================================================
+   GAME LOOP
+   ============================================================ */
+var lastT = performance.now();
+var acc = 0, fixedDt = 1/60;
+var lastSaveT = 0;
+var timeScale = 1;
+
+function loop(now){
+  var dt = Math.min((now - lastT)/1000, 0.25);
+  lastT = now;
+  time += dt;
+
+  // slow-mo (fall) — but still advance gameplay at reduced rate
+  var s = slowmo > 0 ? 0.25 : 1;
+  slowmo = Math.max(0, slowmo - dt*2);
+  timeScale = s;
+  var gdt = dt * s;
+
+  acc += dt;
+  while(acc >= fixedDt){
+    update(gdt);
+    acc -= fixedDt;
+  }
+
+  renderWorld();
+  renderHUD();
+
+  if(now - lastSaveT >= CONFIG.autosaveMs){
+    lastSaveT = now; save();
+  }
+
+  // ambient leaves
+  if(Math.random() < dt*2) spawnLeaf();
+
+  requestAnimationFrame(loop);
+}
+
+function update(dt){
+  // falling tree auto-complete if the player doesn't choose a direction
+  if(falling){
+    falling.fallTimer = (falling.fallTimer||0) + dt;
+    if(falling.fallTimer > 2.5){ completeFall(); }
+  }
+
+  // stamina regen (delayed after swing)
+  if(swing.active){ /* regen pauses during active swing */ }
+  else if(state.stamina < maxStamina()){
+    state.stamina = Math.min(maxStamina(), state.stamina + staminaRegen()*dt);
+  }
+
+  // swing meter animation
+  if(swing.active){
+    swing.pos += swing.dir * swing.speed * dt;
+    if(swing.pos >= 1){ swing.pos = 1; swing.dir = -1; }
+    if(swing.pos <= 0){ swing.pos = 0; swing.dir = 1; }
+    $('needle').style.left = (swing.pos*100) + '%';
+  }
+
+  // economy (idle income as money from workers)
+  var inc = incomeValue();
+  if(inc > 0){ state.money += inc*dt; state.lifetime += inc*dt; state.stats.earned += inc*dt; }
+  if(incomePerSec() > state.stats.bestIncome) state.stats.bestIncome = incomePerSec();
+
+  // market
+  updateMarket(dt);
+
+  // regrowth
+  regrowTrees(dt);
+
+  // events
+  if(!state.event && Date.now() >= state.nextEventAt){
+    rollEvent();
+  }
+  updateEvent(dt);
+
+  // achievements by earning
+  if(state.lifetime >= 100) unlockAch('a4');
+  if(state.lifetime >= 1000) unlockAch('a7');
+  if(state.lifetime >= 1000000) unlockAch('a10');
+
+  // era check
+  checkEra();
+}
+
+function renderHUD(){
+  $('hMoney').textContent = fmtMoney(state.money);
+  $('hLogs').textContent = Math.floor(state.logs)+'/'+storageCap();
+  $('hStam').textContent = Math.floor(state.stamina);
+  $('hStamBar').style.width = (state.stamina/maxStamina()*100)+'%';
+  $('hFh').textContent = Math.floor(state.forestHealth)+'%';
+  $('hFhBar').style.width = state.forestHealth+'%';
+  $('hFhBar').style.background = state.forestHealth < 30 ? 'var(--bad)' : 'var(--good)';
+}
+
+/* ============================================================
+   AUDIO (WebAudio, procedural)
+   ============================================================ */
+var AC = null, masterGain = null;
+function initAudio(){
+  if(AC) return;
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    masterGain = AC.createGain();
+    masterGain.gain.value = 0.35;
+    masterGain.connect(AC.destination);
+    startAmbient();
+  }catch(e){}
+}
+function tone(freq, dur, type, vol, slide){
+  if(!AC || state.muted) return;
+  var o = AC.createOscillator(), g = AC.createGain();
+  o.type = type||'square'; o.frequency.value = freq;
+  if(slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime+dur);
+  g.gain.setValueAtTime(vol||0.2, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+dur);
+  o.connect(g); g.connect(masterGain);
+  o.start(); o.stop(AC.currentTime+dur);
+}
+function noise(dur, vol){
+  if(!AC || state.muted) return;
+  var buf = AC.createBuffer(1, AC.sampleRate*dur, AC.sampleRate);
+  var d = buf.getChannelData(0);
+  for(var i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * (1-i/d.length);
+  var src = AC.createBufferSource(); src.buffer = buf;
+  var g = AC.createGain(); g.gain.value = vol||0.2;
+  src.connect(g); g.connect(masterGain); src.start();
+}
+function sfx(name){
+  if(!AC) return;
+  switch(name){
+    case 'chop': tone(180,0.08,'square',0.18,120); break;
+    case 'crit': tone(500,0.15,'sawtooth',0.25,900); noise(0.12,0.2); break;
+    case 'fall': noise(0.4,0.35); tone(80,0.3,'sine',0.3,40); break;
+    case 'sell': tone(880,0.08,'sine',0.2); setTimeout(function(){ tone(1320,0.1,'sine',0.2); },60); break;
+    case 'event': tone(300,0.3,'triangle',0.2,600); break;
+    case 'era': tone(523,0.2,'sine',0.25); setTimeout(function(){ tone(659,0.2,'sine',0.25); },150); setTimeout(function(){ tone(784,0.3,'sine',0.25); },300); break;
+    case 'click': tone(600,0.05,'square',0.1); break;
+  }
+}
+function startAmbient(){
+  if(!AC) return;
+  // simple era-based ambient drone
+  var base = [110,130,150,180,220,260][state.era];
+  setInterval(function(){
+    if(state.muted || !AC) return;
+    tone(base, 1.5, 'sine', 0.03);
+  }, 3000);
+}
+function toggleMute(){
+  state.muted = !state.muted;
+  toast(state.muted?'🔇':'🔊', state.muted?'Muted':'Sound on');
+}
+function vibrate(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
+
+/* ============================================================
+   UI — panels, tabs, toasts, modals
+   ============================================================ */
+var TABS = [
+  { id:'shop', name:'🛒 Shop', render: renderShop },
+  { id:'upgrade', name:'⚡ Upgrade', render: renderUpgrade },
+  { id:'market', name:'📈 Market', render: renderMarket },
+  { id:'prestige', name:'👑 Prestige', render: renderPrestige },
+  { id:'stats', name:'🏆 Stats', render: renderStats },
+  { id:'settings', name:'⚙️', render: renderSettings }
+];
+var activeTab = 'shop';
+
+function buildTabs(){
+  var t = $('tabs'); t.innerHTML = '';
+  TABS.forEach(function(tab){
+    var b = document.createElement('button');
+    b.textContent = tab.name;
+    b.dataset.tab = tab.id;
+    if(tab.id === activeTab) b.classList.add('on');
+    b.addEventListener('click', function(){ sfx('click'); setTab(tab.id); });
+    t.appendChild(b);
+  });
+}
+function setTab(id){
+  activeTab = id;
+  buildTabs();
+  var r = TABS.find(function(x){ return x.id===id; });
+  r.render();
+}
+function panel(html){ $('panel').innerHTML = html; }
+function cathead(txt){ return '<div class="cathead">'+txt+'</div>'; }
+
+function buyBtn(group, item, owned, cost){
+  var cls = owned ? 'owned' : (state.money < cost ? 'off' : '');
+  return '<button class="buy '+cls+'" data-buy="'+group+'" data-id="'+item.id+'">'+(owned?'✓ Owned':'<span>Buy</span><span class="c">'+fmtMoney(cost)+'</span>')+'</button>';
+}
+
+function renderShop(){
+  var h = '';
+  // tools
+  h += cathead('🪚 Tools');
+  CONFIG.tools.forEach(function(t, i){
+    var owned = state.tool >= i;
+    h += '<div class="item"><div class="ic">'+t.ico+'</div><div class="info"><div class="n">'+t.name+'</div><div class="d">Damage: '+t.dmg+(t.critBonus>1?' · crit x'+t.critBonus:'')+'</div></div>'
+       + buyBtn('tools', t, owned, t.cost) + '</div>';
+  });
+  // workers
+  h += cathead('🧑‍🌾 Workers');
+  CONFIG.workers.forEach(function(w){
+    var n = ownedCount('workers', w.id);
+    var cost = Math.floor(w.cost*Math.pow(CONFIG.costMult, n));
+    h += '<div class="item"><div class="ic">'+w.ico+'</div><div class="info"><div class="n">'+w.name+'</div><div class="y">+'+w.inc+' logs/s</div><div class="d">Owned: '+n+'</div></div>'
+       + buyBtn('workers', w, false, cost) + '</div>';
+  });
+  // vehicles
+  h += cathead('🚚 Vehicles');
+  CONFIG.vehicles.forEach(function(v){
+    var n = ownedCount('vehicles', v.id);
+    var cost = Math.floor(v.cost*Math.pow(CONFIG.costMult, n));
+    h += '<div class="item"><div class="ic">'+v.ico+'</div><div class="info"><div class="n">'+v.name+'</div><div class="y">+'+v.inc+' logs/s</div><div class="d">Owned: '+n+'</div></div>'
+       + buyBtn('vehicles', v, false, cost) + '</div>';
+  });
+  // buildings
+  h += cathead('🏭 Buildings');
+  CONFIG.buildings.forEach(function(b){
+    var n = ownedCount('buildings', b.id);
+    var cost = Math.floor(b.cost*Math.pow(CONFIG.costMult, n));
+    var y = b.storage ? ('+'+40+' storage') : ('+'+b.inc+' logs/s');
+    h += '<div class="item"><div class="ic">'+b.ico+'</div><div class="info"><div class="n">'+b.name+'</div><div class="y">'+y+'</div><div class="d">Owned: '+n+'</div></div>'
+       + buyBtn('buildings', b, false, cost) + '</div>';
+  });
+  panel(h);
+  wireShop();
+}
+
+function renderUpgrade(){
+  var h = cathead('⚡ Upgrades (one-time & tiered)');
+  CONFIG.upgrades.forEach(function(u){
+    var cur = ownedCount('upgrades', u.id);
+    var maxed = cur >= (u.max||1);
+    var cost = upgradeCost(u, cur);
+    h += '<div class="item"><div class="ic">'+u.ico+'</div><div class="info"><div class="n">'+u.name+'</div><div class="d">'+u.desc+'</div><div class="y">Level '+cur+'/'+(u.max||1)+'</div></div>'
+       + (maxed ? '<button class="buy owned">MAX</button>' : buyBtn('upgrades', u, false, cost)) + '</div>';
+  });
+  panel(h);
+  wireShop();
+}
+
+function renderMarket(){
+  var h = '<div class="row"><span class="k">Log price</span><span class="v">'+'$'+state.price.toFixed(2)+'</span></div>';
+  h += '<div class="row"><span class="k">Your logs</span><span class="v">'+Math.floor(state.logs)+'</span></div>';
+  h += '<div class="row"><span class="k">Storage</span><span class="v">'+Math.floor(state.logs)+'/'+storageCap()+'</span></div>';
+  h += '<div class="row"><span class="k">Sell multiplier</span><span class="v">x'+sellMult().toFixed(2)+'</span></div>';
+  h += '<div style="height:90px;background:rgba(0,0,0,.25);border-radius:10px;margin:10px 0;position:relative" id="priceChart"></div>';
+  h += '<button class="btn gold" id="sell10">Sell 10 logs</button>';
+  h += '<button class="btn" id="sellAll">Sell ALL (S)</button>';
+  panel(h);
+  $('sell10').addEventListener('click', function(){ sfx('click'); sellLogs(false); });
+  $('sellAll').addEventListener('click', function(){ sfx('click'); sellLogs(true); });
+  drawPriceChart();
+}
+
+function drawPriceChart(){
+  var el = $('priceChart');
+  if(!el) return;
+  el.innerHTML = '';
+  var c = document.createElement('canvas');
+  c.width = el.clientWidth; c.height = 90;
+  el.appendChild(c);
+  var x = c.getContext('2d');
+  x.strokeStyle = '#f4c542'; x.lineWidth = 2; x.beginPath();
+  var hist = state.priceHistory;
+  if(hist.length < 2){ x.fillStyle='#82906f'; x.font='12px sans-serif'; x.fillText('Price history building up…', 10, 45); return; }
+  for(var i=0;i<hist.length;i++){
+    var px = i/(hist.length-1)*c.width;
+    var py = 90 - (hist[i].p/25)*80;
+    if(i===0) x.moveTo(px,py); else x.lineTo(px,py);
+  }
+  x.stroke();
+}
+
+function renderPrestige(){
+  var lp = potentialLegacy();
+  var h = '<p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Retire and start a fresh forest. Legacy Points unlock permanent bonuses.</p>';
+  h += '<div class="row"><span class="k">Legacy Points</span><span class="v">'+state.legacy+'</span></div>';
+  h += '<div class="row"><span class="k">Next retire gives</span><span class="v">'+lp+'</span></div>';
+  h += '<button class="btn gold" id="doPrestige">👑 Retire & Start New Forest</button>';
+  h += cathead('✨ Skill Tree');
+  CONFIG.skills.forEach(function(s){
+    var owned = !!state.skills[s.id];
+    h += '<div class="pt"><div class="ic">'+s.ico+'</div><div class="info"><div class="n">'+s.name+'</div><div class="d">'+s.desc+'</div></div>'
+       + '<button class="'+(owned?'on':'')+'" data-skill="'+s.id+'">'+(owned?'✓':'Cost '+s.cost)+'</button></div>';
+  });
+  panel(h);
+  $('doPrestige').addEventListener('click', function(){
+    showModal('<h2>👑 Retire?</h2><p>Reset ALL progress for <b>'+lp+'</b> Legacy Points. Achievements & Legacy are kept.</p><div class="btns"><button class="ok" id="pOk">Yes, retire</button><button class="no" id="pNo">Cancel</button></div>');
+    $('pOk').addEventListener('click', function(){ hideModal(); doPrestige(); });
+    $('pNo').addEventListener('click', hideModal);
+  });
+  document.querySelectorAll('[data-skill]').forEach(function(b){
+    b.addEventListener('click', function(){
+      sfx('click');
+      var s = CONFIG.skills.find(function(x){ return x.id===b.dataset.skill; });
+      buySkill(s);
+    });
+  });
+}
+
+function renderStats(){
+  var h = cathead('📊 Statistics');
+  h += '<div class="row"><span class="k">Total earned</span><span class="v">'+fmtMoney(state.lifetime)+'</span></div>';
+  h += '<div class="row"><span class="k">Trees cut</span><span class="v">'+state.treesCut+'</span></div>';
+  h += '<div class="row"><span class="k">Crits</span><span class="v">'+state.crits+'</span></div>';
+  h += '<div class="row"><span class="k">Events cleared</span><span class="v">'+state.eventsCleared+'</span></div>';
+  h += '<div class="row"><span class="k">Best income</span><span class="v">'+fmt(state.stats.bestIncome)+'/s</span></div>';
+  h += '<div class="row"><span class="k">Current income</span><span class="v">'+fmt(incomePerSec())+'/s</span></div>';
+  h += cathead('🏆 Achievements ('+Object.keys(state.ach).length+'/'+CONFIG.achievements.length+')');
+  CONFIG.achievements.forEach(function(a){
+    var done = !!state.ach[a.id];
+    h += '<div class="ach'+(done?' done':'')+'"><div class="ic">'+a.ico+'</div><div class="info"><div class="n">'+a.name+'</div><div class="d">'+a.desc+'</div></div></div>';
+  });
+  panel(h);
+}
+
+function renderSettings(){
+  var h = '<button class="btn" id="muteBtn">'+'🔊 Sound: '+(state.muted?'Off':'On')+'</button>';
+  h += '<button class="btn" id="exportBtn">📤 Export Save</button>';
+  h += '<button class="btn" id="importBtn">📥 Import Save</button>';
+  h += '<button class="btn danger" id="resetBtn">🗑️ Hard Reset</button>';
+  h += '<p style="font-size:11px;color:var(--faint);margin-top:8px">Save v'+CONFIG.VERSION+' · Session '+sessionId.slice(-4)+'</p>';
+  panel(h);
+  $('muteBtn').addEventListener('click', function(){ toggleMute(); renderSettings(); });
+  $('exportBtn').addEventListener('click', function(){
+    var b64 = exportSave();
+    var ta = document.createElement('textarea'); ta.value = b64; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast('📤','Save copied to clipboard'); }catch(e){}
+    ta.remove();
+  });
+  $('importBtn').addEventListener('click', function(){
+    showModal('<h2>📥 Import Save</h2><p>Paste your save code below:</p><textarea id="importTA" style="width:100%;height:80px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px"></textarea><div class="btns"><button class="ok" id="impOk">Import</button><button class="no" id="impNo">Cancel</button></div>');
+    $('impNo').addEventListener('click', hideModal);
+    $('impOk').addEventListener('click', function(){ importSave($('importTA').value); hideModal(); });
+  });
+  $('resetBtn').addEventListener('click', function(){
+    showModal('<h2>🗑️ Hard Reset?</h2><p>This permanently erases ALL progress including Legacy Points and achievements.</p><div class="btns"><button class="ok" id="rOk">Yes, erase all</button><button class="no" id="rNo">Cancel</button></div>');
+    $('rNo').addEventListener('click', hideModal);
+    $('rOk').addEventListener('click', function(){ hideModal(); safeDel(CONFIG.saveKey); state = defaultState(); save(); rebuild(); renderWorld(); });
+  });
+}
+
+function rebuild(){
+  buildTabs();
+  setTab(activeTab);
+}
+
+function wireShop(){
+  document.querySelectorAll('[data-buy]').forEach(function(b){
+    b.addEventListener('click', function(){
+      sfx('click');
+      buy(b.dataset.buy, b.dataset.id);
+    });
+  });
+}
+
+function toast(ico, msg){
+  var box = $('toasts');
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = '<span>'+ico+'</span> '+msg;
+  box.appendChild(t);
+  setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .3s'; }, 2600);
+  setTimeout(function(){ t.remove(); }, 3000);
+}
+function showModal(html){
+  $('modal').innerHTML = html;
+  $('modalBack').classList.remove('hidden');
+}
+function hideModal(){ $('modalBack').classList.add('hidden'); }
+
+/* ============================================================
+   TUTORIAL
+   ============================================================ */
+function tutorialTick(){
+  if(!state.tutorial) return;
+  var msgs = [
+    'Tap the trees / press SPACE to swing! Time it in the GREEN zone for a crit.',
+    'Earn money, then open the 🛒 Shop to buy a better tool!',
+    'Hire Workers to auto-earn logs while you rest. Good luck, boss!'
+  ];
+  if(state.tutStep < msgs.length){
+    if(state.tutStep===0 && state.treesCut>0) nextTut(msgs);
+    else if(state.tutStep===1 && state.money>=40) nextTut(msgs);
+  }
+  function nextTut(m){ state.tutStep++; if(state.tutStep<m.length){ toast('💡', m[state.tutStep]); } else { state.tutorial=false; } }
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+function bindInput(){
+  // scene taps: chop
+  cv.addEventListener('pointerdown', function(ev){
+    ev.preventDefault();
+    initAudio();
+    if(AC && AC.state==='suspended') AC.resume();
+    if(falling){
+      // choose fall direction
+      var rect = cv.getBoundingClientRect();
+      var x = ev.clientX - rect.left;
+      falling.fallDir = x < rect.width/2 ? -1 : 1;
+      completeFall();
+      return;
+    }
+    if(state.event && state.event.type==='fire'){
+      state.event.progress -= 0.15;
+      if(state.event.progress <= 0){ clearEvent(); }
+      return;
+    }
+    swingAction();
+  });
+
+  // keyboard
+  document.addEventListener('keydown', function(ev){
+    if(ev.repeat) return;
+    var tag = (document.activeElement && document.activeElement.tagName)||'';
+    if(tag==='TEXTAREA' || tag==='INPUT') return;
+    initAudio();
+    if(ev.code==='Space' || ev.code==='Enter'){
+      ev.preventDefault();
+      if(falling){ return; }
+      swingAction();
+    } else if(ev.code==='ArrowLeft'){
+      if(falling){ falling.fallDir=-1; completeFall(); }
+    } else if(ev.code==='ArrowRight'){
+      if(falling){ falling.fallDir=1; completeFall(); }
+    } else if(ev.key==='s' || ev.key==='S'){
+      sellLogs(true);
+    } else if(ev.key==='m' || ev.key==='M'){
+      toggleMute();
+    } else if(ev.key==='Escape'){
+      hideModal();
+    } else {
+      var n = parseInt(ev.key,10);
+      if(n>=1 && n<=9){
+        // buy shortcut: tools 1-5, workers 6-7, etc. simplified: buy by global index
+        buyShortcut(n);
+      }
+    }
+  });
+
+  // swipe for fall direction on mobile
+  var sx=0, sy=0;
+  cv.addEventListener('pointerdown', function(e){ sx=e.clientX; sy=e.clientY; });
+  cv.addEventListener('pointerup', function(e){
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if(falling && Math.abs(dx)>30 && Math.abs(dx)>Math.abs(dy)){
+      falling.fallDir = dx>0?1:-1; completeFall();
+    }
+  });
+
+  // storage event: multi-tab protection
+  window.addEventListener('storage', function(e){
+    if(e.key === CONFIG.saveKey && e.newValue){
+      // another tab saved; reload our view if our session is stale
+      try{
+        var s = JSON.parse(e.newValue);
+        if(s && s.lastSaved > state.lastSaved){ state = migrate(s); rebuild(); renderWorld(); }
+      }catch(err){}
+    }
+  });
+
+  // save triggers
+  window.addEventListener('pagehide', save);
+  window.addEventListener('beforeunload', save);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') save(); });
+}
+
+function buyShortcut(n){
+  // map 1-5 tools, 6-9 workers
+  if(n>=1 && n<=CONFIG.tools.length){
+    var t = CONFIG.tools[n-1];
+    buy('tools', t.id);
+  } else if(n<=CONFIG.tools.length+CONFIG.workers.length){
+    var w = CONFIG.workers[n-CONFIG.tools.length-1];
+    buy('workers', w.id);
+  }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  load();
+  resize();
+  if(!state.trees.length) spawnInitialForest();
+  document.body.style.background = CONFIG.eras[state.era].bg;
+  rebuild();
+  bindInput();
+  applyOffline();
+  dailyLogin();
+  toast('🌲','Welcome to TIMBER EMPIRE!');
+  requestAnimationFrame(loop);
+}
+
+function applyOffline(){
+  // delayed so income is computed after load
+  setTimeout(offlineProgress, 400);
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>

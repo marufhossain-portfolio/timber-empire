@@ -1,0 +1,19 @@
+{
+  "name": "TIMBER EMPIRE",
+  "short_name": "Timber",
+  "description": "Grow a tiny logging operation into a global timber empire.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1c2a1f",
+  "theme_color": "#1c2a1f",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%231c2a1f'/%3E%3Ctext x='50%25' y='50%25' font-size='340' text-anchor='middle' dominant-baseline='central'%3E%F0%9F%8C%B2%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
